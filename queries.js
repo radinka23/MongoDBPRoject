@@ -1,85 +1,150 @@
-// Свързване с базата данни boutique_shop
+// Свързване с базата данни
 use('boutique_shop');
 
-//
-// ===================== READ ОПЕРАЦИИ =====================
-//
+//////////////////////////////////////////////////////
+// ============ ИЗВЛИЧАНЕ НА ДАННИ (READ) ============
+//////////////////////////////////////////////////////
 
-// Извличане на всички продукти
+// --- PRODUCTS ---
+// Всички продукти
 db.products.find();
 
-// Филтриране на продукти по категория "Accessories"
-db.products.find({ category: "Accessories" });
+// Продукти от категория "Clothing"
+db.products.find({ category: "Clothing" });
 
-// Филтриране на продукти по категория и марка
-// Пример: продукти от категория "Tops" и марка "Eleganza"
-db.products.find({ category: "Tops", brand: "Eleganza" });
+// Продукти с цена над 50 и налични
+db.products.find({ price: { $gt: 50 }, stock: { $gt: 0 } });
 
-// Извличане на всички клиенти
+
+// --- CUSTOMERS ---
+// Всички клиенти
 db.customers.find();
 
-// Клиенти от град Sofia
-db.customers.find({ "address.city": "Sofia" });
+// Клиенти от град "Plovdiv"
+db.customers.find({ "address.city": "Plovdiv" });
 
-// Клиенти с повече от 100 точки за лоялност
-db.customers.find({ loyaltyPoints: { $gt: 100 } });
+// Клиенти с повече от 5 поръчки
+db.customers.find({ totalOrders: { $gt: 5 } });
 
-//
-// ===================== UPDATE ОПЕРАЦИИ =====================
-//
 
-// Актуализиране на цена на продукт с име "Silk Blouse"
-// Пример: променяме цената на "Silk Blouse" от 120.0 на 125.0
+// --- SUPPLIERS ---
+// Всички доставчици
+db.suppliers.find();
+
+// Доставчици от "Italy"
+db.suppliers.find({ country: "Italy" });
+
+// Доставчици, които доставят "Dress"
+db.suppliers.find({ suppliedProducts: "Dress" });
+
+
+// --- ORDERS ---
+// Всички поръчки
+db.orders.find();
+
+// Поръчки с обща сума над 200
+db.orders.find({ total: { $gt: 200 } });
+
+// Поръчки от клиент със специфично ID
+db.orders.find({ customerId: ObjectId("665f2207aa7a4eb9ef8cb1ac") });
+
+
+// --- EMPLOYEES ---
+// Всички служители
+db.employees.find();
+
+// Служители с позиция "Manager"
+db.employees.find({ position: "Manager" });
+
+// Служители с над 3 години стаж и заплата над 2000
+db.employees.find({ experience: { $gt: 3 }, salary: { $gt: 2000 } });
+
+//////////////////////////////////////////////////////
+// ============ АКТУАЛИЗАЦИЯ (UPDATE) ===============
+//////////////////////////////////////////////////////
+
+// --- PRODUCTS ---
 db.products.updateOne(
-  { name: "Silk Blouse" },
-  { $set: { price: 125.0 } }
+  { name: "Leather Jacket" },
+  { $set: { price: 199.99 } }
 );
 
-// Актуализиране на телефонен номер на клиент по имейл
-// Пример: актуализиране на телефон за "anna@example.com"
+// --- CUSTOMERS ---
 db.customers.updateOne(
-  { email: "anna@example.com" },
-  { $set: { phone: "0888999999" } }
+  { email: "maria@example.com" },
+  { $set: { phone: "0888123456" } }
 );
 
-// Добавяне на нов продукт към доставчика
-// Пример: добавяне на "Eco Scarf" към доставчика "FashionImports Ltd"
+// --- SUPPLIERS ---
 db.suppliers.updateOne(
-  { name: "FashionImports Ltd" },
-  { $addToSet: { suppliedProducts: "Eco Scarf" } }
+  { name: "Moda Italia" },
+  { $addToSet: { suppliedProducts: "Handbag" } }
 );
 
-//
-// ===================== DELETE ОПЕРАЦИИ =====================
-//
+// --- ORDERS ---
+db.orders.updateOne(
+  { total: { $gt: 300 } },
+  { $set: { status: "shipped" } }
+);
 
-// Изтриване на продукт с име "Leather Handbag"
-db.products.deleteOne({ name: "Leather Handbag" });
+// --- EMPLOYEES ---
+db.employees.updateOne(
+  { name: "Elena Dimitrova" },
+  { $set: { salary: 2300 } }
+);
 
-// Изтриване на клиент с конкретен имейл
-// Пример: изтриване на клиент с имейл "petya@example.com"
-db.customers.deleteOne({ email: "petya@example.com" });
+//////////////////////////////////////////////////////
+// ================ ИЗТРИВАНЕ (DELETE) ==============
+//////////////////////////////////////////////////////
 
-// Изтриване на служител с име "Todor Zlatev"
-db.employees.deleteOne({ name: "Todor Zlatev" });
+// --- PRODUCTS ---
+db.products.deleteOne({ name: "Summer Hat" });
 
-//
-// ===================== AGGREGATE PIPELINE =====================
-//
+// --- CUSTOMERS ---
+db.customers.deleteOne({ email: "oldcustomer@example.com" });
 
-// Групиране на продукти по категория и изчисляване на средна цена и общ брой артикули на склад
+// --- SUPPLIERS ---
+db.suppliers.deleteOne({ name: "Old Textiles" });
+
+// --- ORDERS ---
+db.orders.deleteOne({ total: { $lt: 30 } });
+
+// --- EMPLOYEES ---
+db.employees.deleteOne({ name: "Petar Ivanov" });
+
+//////////////////////////////////////////////////////
+// ================= АГРЕГИРАНЕ (AGGREGATE) =========
+//////////////////////////////////////////////////////
+
+// --- PRODUCTS ---
+// 1. Средна цена и обща наличност по категория
 db.products.aggregate([
-  { $group: {
+  {
+    $group: {
       _id: "$category",
       avgPrice: { $avg: "$price" },
       totalStock: { $sum: "$stock" }
     }
-  }
+  },
+  { $sort: { avgPrice: -1 } }
 ]);
 
-// Броене на клиенти по град
+// 2. Брой продукти по марка
+db.products.aggregate([
+  {
+    $group: {
+      _id: "$brand",
+      productCount: { $sum: 1 }
+    }
+  },
+  { $sort: { productCount: -1 } }
+]);
+
+// --- CUSTOMERS ---
+// 1. Брой клиенти по град
 db.customers.aggregate([
-  { $group: {
+  {
+    $group: {
       _id: "$address.city",
       count: { $sum: 1 }
     }
@@ -87,10 +152,57 @@ db.customers.aggregate([
   { $sort: { count: -1 } }
 ]);
 
-// Сумиране на стойности на поръчки по клиент
-// Групира по customerId, като се изчислява общата сума и брой поръчки за всеки клиент
+// 2. Среден брой поръчки по възрастова група
+db.customers.aggregate([
+  {
+    $bucket: {
+      groupBy: "$age",
+      boundaries: [18, 30, 45, 60, 100],
+      default: "Other",
+      output: {
+        avgOrders: { $avg: "$totalOrders" },
+        count: { $sum: 1 }
+      }
+    }
+  }
+]);
+
+// --- SUPPLIERS ---
+// 1. Групиране на доставчици по държава с брой доставени продукти
+db.suppliers.aggregate([
+  {
+    $project: {
+      name: 1,
+      country: 1,
+      productCount: { $size: "$suppliedProducts" }
+    }
+  },
+  {
+    $group: {
+      _id: "$country",
+      totalProducts: { $sum: "$productCount" },
+      suppliers: { $push: "$name" }
+    }
+  },
+  { $sort: { totalProducts: -1 } }
+]);
+
+// 2. Брой доставчици по държава
+db.suppliers.aggregate([
+  {
+    $group: {
+      _id: "$country",
+      supplierCount: { $sum: 1 }
+    }
+  },
+  { $sort: { supplierCount: -1 } }
+]);
+
+// --- ORDERS ---
+// 1. Общо похарчено и брой поръчки по клиент
 db.orders.aggregate([
-  { $group: {
+  {
+    $group: {
       _id: "$customerId",
       totalSpent: { $sum: "$total" },
       orderCount: { $sum: 1 }
@@ -99,8 +211,37 @@ db.orders.aggregate([
   { $sort: { totalSpent: -1 } }
 ]);
 
-// Извличане на служители със заплата над 1500, сортирани по заплата в низходящ ред
+// 2. Брой поръчки по статус
+db.orders.aggregate([
+  {
+    $group: {
+      _id: "$status",
+      count: { $sum: 1 }
+    }
+  },
+  { $sort: { count: -1 } }
+]);
+
+// --- EMPLOYEES ---
+// 1. Средна заплата и брой служители по позиция
 db.employees.aggregate([
-  { $match: { salary: { $gt: 1500 } } },
-  { $sort: { salary: -1 } }
+  {
+    $group: {
+      _id: "$position",
+      avgSalary: { $avg: "$salary" },
+      count: { $sum: 1 }
+    }
+  },
+  { $sort: { avgSalary: -1 } }
+]);
+
+// 2. Брой служители по град
+db.employees.aggregate([
+  {
+    $group: {
+      _id: "$address.city",
+      employeeCount: { $sum: 1 }
+    }
+  },
+  { $sort: { employeeCount: -1 } }
 ]);
